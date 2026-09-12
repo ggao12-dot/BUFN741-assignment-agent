@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+
+# Environment variables / credentials
+.env
+.env.*
+
+# Raw and processed data
+data/raw/*
+data/processed/*
+
+# Keep directories even when empty
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Generated output
+output/tables/*
+output/figures/*
+!output/tables/.gitkeep
+!output/figures/.gitkeep
+
+# Runtime logs
+logs/*
+!logs/.gitkeep
+
+# Temporary files
+*.tmp
+*.temp
+~$*
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE / editor optional local state
+.vscode/

@@ -1,0 +1,167 @@
+project:
+  name: "BUFN741 Group Assignment 1"
+  title: "Return Distributions, Tail Risk, and Equity Style Portfolios"
+  course: "Advanced Capital Markets"
+  course_number: "BUFN741"
+
+data:
+  frequency: "monthly"
+  return_type: "simple"
+
+  assets:
+    - id: "SP500"
+      name: "S&P 500 Index"
+      category: "market"
+
+    - id: "Small_Growth"
+      name: "Small/Growth"
+      category: "fama_french_2x3"
+
+    - id: "Small_Value"
+      name: "Small/Value"
+      category: "fama_french_2x3"
+
+    - id: "Big_Growth"
+      name: "Big/Growth"
+      category: "fama_french_2x3"
+
+    - id: "Big_Value"
+      name: "Big/Value"
+      category: "fama_french_2x3"
+
+  risk_free:
+    frequency: "monthly"
+    description: "One-month U.S. Treasury bill / Fama-French risk-free rate"
+
+  preferred_sources:
+    primary:
+      - "WRDS"
+      - "Kenneth R. French Data Library"
+
+    secondary:
+      - "Yahoo Finance"
+
+analysis_variable:
+  name: "monthly_excess_return"
+  definition: "asset_return - risk_free_return"
+
+samples:
+  full_history:
+    start: "earliest_common_month"
+    end: "latest_complete_month"
+
+  period_1990_2000:
+    start: "1990-01"
+    end: "2000-12"
+
+  period_2001_2010:
+    start: "2001-01"
+    end: "2010-12"
+
+  period_2011_present:
+    start: "2011-01"
+    end: "latest_complete_month"
+
+statistics:
+  - id: "annualized_mean_excess_return"
+    definition: "12 * mean(monthly_excess_return)"
+
+  - id: "annualized_standard_deviation"
+    definition: "sqrt(12) * sample_sd(monthly_excess_return)"
+
+  - id: "sharpe_ratio"
+    definition: "annualized_mean_excess_return / annualized_standard_deviation"
+
+  - id: "annualized_lower_partial_standard_deviation"
+    definition: "sqrt(12) * sqrt(mean((return - sample_mean)^2 conditional on return < sample_mean))"
+
+  - id: "skewness"
+    definition: "sample skewness of monthly excess returns"
+
+  - id: "excess_kurtosis"
+    definition: "sample excess kurtosis; normal distribution = 0"
+
+  - id: "empirical_var_1pct"
+    definition: "empirical 1st percentile of monthly excess returns"
+
+  - id: "normal_var_1pct"
+    definition: "monthly_mean - 2.3263 * monthly_standard_deviation"
+
+  - id: "pct_below_mean_minus_3sd"
+    definition: "percentage of monthly observations below mean - 3 * standard_deviation"
+
+  - id: "expected_shortfall_1pct"
+    definition: "mean return conditional on return <= empirical_var_1pct"
+
+validation:
+  date_alignment:
+    required: true
+
+  duplicate_dates:
+    allowed: false
+
+  missing_observations:
+    report: true
+
+  return_units:
+    must_be_identified: true
+    target_unit: "decimal"
+
+  dividend_treatment:
+    must_be_documented: true
+
+  usable_month_count:
+    report_for_each_sample: true
+
+  independent_crosscheck:
+    required: true
+
+figures:
+  full_sample:
+    - "time_series_all_assets"
+    - "histogram_normal_overlay_each_asset"
+    - "common_tail_comparison"
+
+  subperiod_figures:
+    required_only_if_materially_informative: true
+
+analysis_questions:
+  - id: "Q1"
+    topic: "Average excess returns and Sharpe ratio rankings"
+
+  - id: "Q2"
+    topic: "Total volatility and downside volatility"
+
+  - id: "Q3"
+    topic: "Evidence against normality and tail risk"
+
+  - id: "Q4"
+    topic: "Expected shortfall versus VaR"
+
+  - id: "Q5"
+    topic: "Distribution differences across subperiods"
+
+  - id: "Q6"
+    topic: "S&P 500 versus Fama-French Big portfolios"
+
+human_escalation:
+  ask_human_if:
+    - "data source definitions conflict materially"
+    - "dividend treatment is ambiguous"
+    - "multiple plausible return series produce materially different interpretations"
+    - "a methodological change is required"
+    - "required data cannot be acquired after reasonable alternatives are attempted"
+
+  do_not_ask_human_for:
+    - "ordinary file-format conversion"
+    - "routine missing-value handling when rules are explicit"
+    - "recoverable download failures"
+    - "routine coding errors"
+    - "plot formatting problems"
+
+reproducibility:
+  retain_raw_data: true
+  retain_processed_data: true
+  retain_source_metadata: true
+  retain_execution_logs: true
+  retain_validation_results: true

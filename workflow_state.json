@@ -1,0 +1,37 @@
+{
+  "project": "BUFN741 Group Assignment 1",
+  "workflow_version": "0.1",
+  "current_stage": "project_initialized",
+  "stages": {
+    "project_initialized": {
+      "status": "complete"
+    },
+    "data_acquisition": {
+      "status": "not_started"
+    },
+    "data_validation": {
+      "status": "not_started"
+    },
+    "data_processing": {
+      "status": "not_started"
+    },
+    "statistical_analysis": {
+      "status": "not_started"
+    },
+    "figure_generation": {
+      "status": "not_started"
+    },
+    "quality_assurance": {
+      "status": "not_started"
+    },
+    "economic_interpretation": {
+      "status": "not_started"
+    },
+    "final_report": {
+      "status": "not_started"
+    }
+  },
+  "human_attention_required": false,
+  "human_attention_reason": null,
+  "last_successful_stage": "project_initialized"
+}
