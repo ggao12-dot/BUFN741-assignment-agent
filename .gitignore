@@ -43,3 +43,7 @@ Thumbs.db
 
 # IDE / editor optional local state
 .vscode/
+
+# Runtime validation artifacts
+validation/artifacts/*
+!validation/artifacts/.gitkeep
