@@ -42,3 +42,48 @@ def test_analysis_question_count():
     questions = spec["analysis_questions"]
 
     assert len(questions) == 6
+
+
+
+def test_previous_stage_logic():
+    assert workflow.previous_stage(
+        "data_validation"
+    ) == "data_acquisition"
+
+
+def test_first_stage_has_no_previous_stage():
+    assert workflow.previous_stage(
+        "project_initialized"
+    ) is None
+
+
+def test_invalid_stage_artifact_fails(tmp_path, monkeypatch):
+    fake_artifact = {
+        "stage": "data_acquisition",
+        "status": "failed",
+    }
+
+    artifact_dir = tmp_path / "validation" / "artifacts"
+    artifact_dir.mkdir(parents=True)
+
+    artifact_path = (
+        artifact_dir / "data_acquisition.json"
+    )
+
+    artifact_path.write_text(
+        __import__("json").dumps(fake_artifact),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        workflow,
+        "PROJECT_ROOT",
+        tmp_path,
+    )
+
+    ok, errors = workflow.validate_stage_artifact(
+        "data_acquisition"
+    )
+
+    assert ok is False
+    assert len(errors) > 0

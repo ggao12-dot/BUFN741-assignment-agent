@@ -15,6 +15,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 SPEC_FILE = PROJECT_ROOT / "config" / "analysis_spec.yaml"
 STATE_FILE = PROJECT_ROOT / "workflow_state.json"
+RULES_FILE = PROJECT_ROOT / "config" / "workflow_rules.yaml"
 ASSIGNMENT_FILE = PROJECT_ROOT / "assignment" / "Assignment_1.docx"
 
 
@@ -61,6 +62,11 @@ def load_json(path: Path) -> dict:
     with path.open("r", encoding="utf-8") as file:
         return json.load(file)
 
+def save_json(path: Path, data: dict) -> None:
+    """Write dictionary data to JSON."""
+    with path.open("w", encoding="utf-8") as file:
+        json.dump(data, file, indent=2)
+        file.write("\n")
 
 def check_required_directories() -> tuple[bool, list[str]]:
     """Check whether all required project directories exist."""
@@ -80,6 +86,7 @@ def check_required_files() -> tuple[bool, list[str]]:
     required_files = [
         SPEC_FILE,
         STATE_FILE,
+        RULES_FILE,
         ASSIGNMENT_FILE,
     ]
 
@@ -90,7 +97,6 @@ def check_required_files() -> tuple[bool, list[str]]:
             missing.append(str(path.relative_to(PROJECT_ROOT)))
 
     return len(missing) == 0, missing
-
 
 def validate_spec(spec: dict) -> tuple[bool, list[str]]:
     """Perform basic structural validation of analysis_spec.yaml."""
@@ -171,6 +177,170 @@ def determine_next_stage(state: dict) -> str | None:
 
     return None
 
+def check_stage_artifacts(
+    stage: str,
+    rules: dict,
+) -> tuple[bool, list[str]]:
+    """Check whether all required artifacts for a stage exist."""
+
+    stage_rules = rules.get("stages", {}).get(stage)
+
+    if stage_rules is None:
+        return False, [f"No workflow rules defined for stage: {stage}"]
+
+    required_artifacts = stage_rules.get(
+        "required_artifacts",
+        [],
+    )
+
+    missing = []
+
+    for artifact in required_artifacts:
+        path = PROJECT_ROOT / artifact
+
+        if not path.is_file():
+            missing.append(artifact)
+
+    return len(missing) == 0, missing
+
+def previous_stage(stage: str) -> str | None:
+    """Return the workflow stage immediately preceding the given stage."""
+
+    index = WORKFLOW_ORDER.index(stage)
+
+    if index == 0:
+        return None
+
+    return WORKFLOW_ORDER[index - 1]
+
+def previous_stage_complete(
+    stage: str,
+    state: dict,
+) -> bool:
+    """Check whether the immediately preceding stage is complete."""
+
+    prev = previous_stage(stage)
+
+    if prev is None:
+        return True
+
+    return (
+        state["stages"][prev].get("status")
+        == "complete"
+    )
+
+def load_stage_artifact(stage: str) -> dict | None:
+    """Load a stage validation artifact if it exists."""
+
+    path = (
+        PROJECT_ROOT
+        / "validation"
+        / "artifacts"
+        / f"{stage}.json"
+    )
+
+    if not path.is_file():
+        return None
+
+    return load_json(path)
+
+
+def validate_stage_artifact(
+    stage: str,
+) -> tuple[bool, list[str]]:
+    """Validate the contents of a stage evidence artifact."""
+
+    errors = []
+
+    artifact = load_stage_artifact(stage)
+
+    if artifact is None:
+        return False, [
+            f"No evidence artifact found for {stage}."
+        ]
+
+    if artifact.get("stage") != stage:
+        errors.append(
+            f"Artifact stage mismatch: "
+            f"expected {stage}, "
+            f"found {artifact.get('stage')}."
+        )
+
+    if artifact.get("status") != "passed":
+        errors.append(
+            "Artifact status must be 'passed'."
+        )
+
+    return len(errors) == 0, errors
+
+def complete_stage(
+    stage: str,
+    state: dict,
+    rules: dict,
+) -> tuple[bool, str]:
+    """
+    Attempt to mark a workflow stage complete.
+
+    Completion is permitted only if:
+    1. the stage is valid;
+    2. the previous stage is complete;
+    3. all required artifacts exist;
+    4. the stage artifact itself is valid.
+    """
+
+    if stage not in WORKFLOW_ORDER:
+        return False, f"Unknown workflow stage: {stage}"
+
+    if state["stages"][stage].get("status") == "complete":
+        return False, f"Stage already complete: {stage}"
+
+    if not previous_stage_complete(stage, state):
+        prev = previous_stage(stage)
+
+        return (
+            False,
+            f"Cannot complete {stage}: "
+            f"previous stage {prev} is not complete.",
+        )
+
+    artifacts_ok, missing = check_stage_artifacts(
+        stage,
+        rules,
+    )
+
+    if not artifacts_ok:
+        message = (
+            f"Cannot complete {stage}: "
+            "required artifacts are missing:\n"
+        )
+
+        for artifact in missing:
+            message += f"  - {artifact}\n"
+
+        return False, message.rstrip()
+
+    artifact_valid, artifact_errors = validate_stage_artifact(
+        stage
+    )
+
+    if not artifact_valid:
+        message = (
+            f"Cannot complete {stage}: "
+            "artifact validation failed:\n"
+        )
+
+        for error in artifact_errors:
+            message += f"  - {error}\n"
+
+        return False, message.rstrip()
+
+    state["stages"][stage]["status"] = "complete"
+    state["current_stage"] = stage
+    state["last_successful_stage"] = stage
+
+    save_json(STATE_FILE, state)
+
+    return True, f"Stage completed successfully: {stage}"
 
 def build_status_report(spec: dict, state: dict) -> dict:
     """Create a machine-readable project status report."""
@@ -211,7 +381,30 @@ def print_header() -> None:
 def main() -> int:
     json_mode = "--json" in sys.argv
 
-    # In normal human-readable mode, print the header.
+    command = None
+    command_stage = None
+
+    # -----------------------------------------------------
+    # Parse commands
+    # -----------------------------------------------------
+
+    if len(sys.argv) >= 2:
+        if sys.argv[1] == "complete":
+            command = "complete"
+
+            if len(sys.argv) < 3:
+                print(
+                    "Usage: python src/workflow.py "
+                    "complete <stage>"
+                )
+                return 1
+
+            command_stage = sys.argv[2]
+
+    # -----------------------------------------------------
+    # Human-readable header
+    # -----------------------------------------------------
+
     if not json_mode:
         print_header()
         print(f"Project root: {PROJECT_ROOT}")
@@ -264,7 +457,7 @@ def main() -> int:
         return 1
 
     # -----------------------------------------------------
-    # Load configuration
+    # Load analysis specification
     # -----------------------------------------------------
 
     try:
@@ -287,6 +480,10 @@ def main() -> int:
 
         return 1
 
+    # -----------------------------------------------------
+    # Load workflow state
+    # -----------------------------------------------------
+
     try:
         state = load_json(STATE_FILE)
     except Exception as exc:
@@ -308,7 +505,31 @@ def main() -> int:
         return 1
 
     # -----------------------------------------------------
-    # Validate specification
+    # Load workflow rules
+    # -----------------------------------------------------
+
+    try:
+        rules = load_yaml(RULES_FILE)
+    except Exception as exc:
+        if json_mode:
+            print(
+                json.dumps(
+                    {
+                        "status": "error",
+                        "error": "rules_load_failed",
+                        "message": str(exc),
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            print("[FAIL] Could not read workflow_rules.yaml")
+            print(f"       {exc}")
+
+        return 1
+
+    # -----------------------------------------------------
+    # Validate research specification
     # -----------------------------------------------------
 
     spec_ok, spec_errors = validate_spec(spec)
@@ -345,6 +566,10 @@ def main() -> int:
 
         print()
 
+    # -----------------------------------------------------
+    # Stop if validation failed
+    # -----------------------------------------------------
+
     if not spec_ok or not state_ok:
         if json_mode:
             print(
@@ -364,7 +589,34 @@ def main() -> int:
         return 1
 
     # -----------------------------------------------------
-    # Machine-readable JSON mode
+    # Execute "complete <stage>" command
+    # -----------------------------------------------------
+
+    if command == "complete":
+        success, message = complete_stage(
+            command_stage,
+            state,
+            rules,
+        )
+
+        if json_mode:
+            print(
+                json.dumps(
+                    {
+                        "success": success,
+                        "stage": command_stage,
+                        "message": message,
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            print(message)
+
+        return 0 if success else 1
+
+    # -----------------------------------------------------
+    # Machine-readable JSON status mode
     # -----------------------------------------------------
 
     if json_mode:
@@ -443,7 +695,6 @@ def main() -> int:
     print()
 
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

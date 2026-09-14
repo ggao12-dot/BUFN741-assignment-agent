@@ -1,0 +1,36 @@
+stages:
+
+  project_initialized:
+    required_artifacts: []
+
+  data_acquisition:
+    required_artifacts:
+      - validation/artifacts/data_acquisition.json
+
+  data_validation:
+    required_artifacts:
+      - validation/artifacts/data_validation.json
+
+  data_processing:
+    required_artifacts:
+      - validation/artifacts/data_processing.json
+
+  statistical_analysis:
+    required_artifacts:
+      - validation/artifacts/statistical_analysis.json
+
+  figure_generation:
+    required_artifacts:
+      - validation/artifacts/figure_generation.json
+
+  quality_assurance:
+    required_artifacts:
+      - validation/artifacts/quality_assurance.json
+
+  economic_interpretation:
+    required_artifacts:
+      - validation/artifacts/economic_interpretation.json
+
+  final_report:
+    required_artifacts:
+      - validation/artifacts/final_report.json
