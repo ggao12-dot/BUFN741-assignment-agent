@@ -3,3 +3,4 @@ pytest>=8.0
 pandas>=2.2
 requests>=2.32
 yfinance>=0.2
+wrds>=3.3
