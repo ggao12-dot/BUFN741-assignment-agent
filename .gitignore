@@ -51,3 +51,6 @@ validation/artifacts/*
 # Generated AI reports
 report/interpretation_prompt.txt
 report/economic_interpretation.md
+
+# Local workflow runtime state
+workflow_state.json
