@@ -47,3 +47,7 @@ Thumbs.db
 # Runtime validation artifacts
 validation/artifacts/*
 !validation/artifacts/.gitkeep
+
+# Generated AI reports
+report/interpretation_prompt.txt
+report/economic_interpretation.md
