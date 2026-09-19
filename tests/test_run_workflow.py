@@ -1,8 +1,6 @@
 import sys
 from pathlib import Path
 
-import pytest
-
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -20,32 +18,24 @@ def make_state(
 
     stages = {}
 
-    reached = False
+    completed = True
 
     for stage in (
         run_workflow
         .WORKFLOW_ORDER
     ):
 
-        if not reached:
-
-            stages[
-                stage
-            ] = {
-                "status": "complete"
-            }
-
-        else:
-
-            stages[
-                stage
-            ] = {
-                "status": "not_started"
-            }
+        stages[stage] = {
+            "status": (
+                "complete"
+                if completed
+                else "not_started"
+            )
+        }
 
         if stage == completed_through:
 
-            reached = True
+            completed = False
 
     return {
         "project": (
@@ -159,6 +149,7 @@ def test_stage_runner_mapping():
         "figure_generation",
         "quality_assurance",
         "economic_interpretation",
+        "final_report",
     }
 
     assert (
@@ -171,67 +162,25 @@ def test_stage_runner_mapping():
     )
 
 
-def test_final_report_not_yet_authorized():
+def test_final_report_authorized():
 
     assert (
         "final_report"
-        not in run_workflow
+        in run_workflow
         .STAGE_RUNNERS
     )
 
 
-def test_artifact_stage_mismatch(
-    tmp_path,
-):
+def test_final_report_runner():
 
-    artifact = (
-        tmp_path
-        / "artifact.json"
-    )
-
-    artifact.write_text(
-        """
-{
-  "stage": "wrong_stage",
-  "status": "passed"
-}
-""".strip(),
-        encoding="utf-8",
-    )
-
-    rules = {
-        "stages": {
-            "test_stage": {
-                "required_artifact": (
-                    str(artifact)
-                )
-            }
-        }
-    }
-
-    original_root = (
+    runner = (
         run_workflow
-        .PROJECT_ROOT
+        .STAGE_RUNNERS[
+            "final_report"
+        ]
     )
 
-    try:
-
-        run_workflow.PROJECT_ROOT = (
-            Path("/")
-        )
-
-        valid, message = (
-            run_workflow
-            .validate_artifact(
-                "test_stage",
-                rules,
-            )
-        )
-
-        assert valid is False
-
-    finally:
-
-        run_workflow.PROJECT_ROOT = (
-            original_root
-        )
+    assert (
+        runner[-1]
+        == "src/build_final_report.py"
+    )

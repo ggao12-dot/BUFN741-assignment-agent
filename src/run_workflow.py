@@ -9,8 +9,6 @@ from pathlib import Path
 
 import yaml
 
-import workflow
-
 
 # =========================================================
 # Project paths
@@ -72,6 +70,10 @@ STAGE_RUNNERS = {
     "economic_interpretation": [
         sys.executable,
         "src/run_interpretation_stage.py",
+    ],
+    "final_report": [
+        sys.executable,
+        "src/build_final_report.py",
     ],
 }
 
@@ -209,9 +211,6 @@ def stage_status(
 def determine_next_stage(
     state: dict,
 ) -> str | None:
-    """
-    Return the first stage that has not yet completed.
-    """
 
     for stage in WORKFLOW_ORDER:
 
@@ -434,11 +433,6 @@ def run_stage(
 def complete_stage(
     stage: str,
 ) -> None:
-    """
-    Delegate stage transition to the existing
-    workflow controller rather than editing the
-    completion status here.
-    """
 
     command = [
         sys.executable,
@@ -467,14 +461,6 @@ def complete_stage(
 def execute_next_stage(
     dry_run: bool = False,
 ) -> str:
-    """
-    Execute at most one incomplete stage.
-
-    Returns:
-        completed
-        stopped
-        finished
-    """
 
     state = load_json(
         STATE_FILE
@@ -674,29 +660,14 @@ def run_supervisor(
                 STATE_FILE
             )
 
-            next_stage = determine_next_stage(
-                state
-            )
-
-            if (
-                next_stage
-                and next_stage
-                not in STAGE_RUNNERS
-                and not state.get(
-                    "human_attention_required",
-                    False,
-                )
+            if state.get(
+                "human_attention_required",
+                False,
             ):
 
-                logging.info(
-                    "Supervisor stopped normally "
-                    "before unimplemented stage: %s",
-                    next_stage,
-                )
+                return 1
 
-                return 0
-
-            return 1
+            return 0
 
 
 # =========================================================
