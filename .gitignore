@@ -20,10 +20,8 @@ data/processed/*
 !data/processed/.gitkeep
 
 # Generated output
-output/tables/*
-output/figures/*
-!output/tables/.gitkeep
-!output/figures/.gitkeep
+# Published teaching outputs are intentionally tracked.
+# Keep this section available for future local-only generated artifacts.
 
 # Runtime logs
 logs/*
